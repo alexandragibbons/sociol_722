@@ -356,7 +356,7 @@ us_medals <- gold_medalists %>%
   filter(noc == "USA") %>% 
   group_by(year) %>% 
   summarise(num_medals = n())
-ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + geom_line() + labs(x="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
+ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + geom_line() + labs(y="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
 ```
 
 ![](HW1_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
