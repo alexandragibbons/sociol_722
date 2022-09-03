@@ -127,7 +127,8 @@ The resulting dataset has 13,372 rows.
 ```{r}
 ggplot(data=gold_medalists, 
        mapping=aes(x=year, y=age)) +
-  geom_point(alpha=.2) + labs(title="Ages of Gold Medalist Olympians by Year")
+  geom_point(alpha=.2) + 
+  labs(title="Ages of Gold Medalist Olympians by Year")
 ```
 
 A scatterplot is most appropriate given that there are multiple observations for each year. That said, this graph is quite difficult to interpret, but it appears that over time the average age of gold medalists, and the variance in the age of gold metalists, have decreased. The visualization will need to be improved to confirm this.
@@ -146,7 +147,9 @@ us_medals <- gold_medalists %>%
   filter(noc == "USA") %>% 
   group_by(year) %>% 
   summarise(num_medals = n())
-ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + geom_line() + labs(y="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
+ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + 
+  geom_line() + 
+  labs(y="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
 ```
 
 The country's most successful year was 1984, when the USA won 190 gold medals. I am guessing that the line is so wiggly towards the end because the USA typically is stronger at Summer Olympic sports than Winter Olympic sports. Prior to 1994, the Summer and Winter Games were held the same year, every four years, but beginning in 1994 they were separated and held every two years which explains why the line gets so wiggly towards the end.

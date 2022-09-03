@@ -323,7 +323,8 @@ The resulting dataset has 13,372 rows.
 ```r
 ggplot(data=gold_medalists, 
        mapping=aes(x=year, y=age)) +
-  geom_point(alpha=.2) + labs(title="Ages of Gold Medalist Olympians by Year")
+  geom_point(alpha=.2) + 
+  labs(title="Ages of Gold Medalist Olympians by Year")
 ```
 
 ```
@@ -356,7 +357,9 @@ us_medals <- gold_medalists %>%
   filter(noc == "USA") %>% 
   group_by(year) %>% 
   summarise(num_medals = n())
-ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + geom_line() + labs(y="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
+ggplot(data=us_medals, mapping=aes(x=year, y=num_medals)) + 
+  geom_line() + 
+  labs(y="number of gold medals", title="Number of USA Olympic Gold Medals by Year")
 ```
 
 ![](HW1_files/figure-html/unnamed-chunk-15-1.png)<!-- -->
