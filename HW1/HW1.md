@@ -338,7 +338,9 @@ A scatterplot is most appropriate given that there are multiple observations for
 
 ```r
 ggplot(data=gold_medalists, mapping=aes(x=factor(year), y=age)) +
-  geom_boxplot() + theme(axis.text.x = element_text(angle = 90)) + labs(x="year", title="Ages of Gold Medalist Olympians by Year")
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90)) + 
+  labs(x="year", title="Ages of Gold Medalist Olympians by Year")
 ```
 
 ```
