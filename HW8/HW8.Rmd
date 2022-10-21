@@ -1,0 +1,67 @@
+---
+title: "HW8"
+author: "Alexandra Gibbons"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 7E1
+1) This measure should be continuous, as a jump to another integer as a result of a minor change in a probability would not be reasonable and would make comparison more difficult.
+2) A measure of uncertainty should get larger if the number of possible outcomes increases. For instance, rolling a die with 4 sides has a more uncertain outcome than rolling a die with 3 sides.
+3) The measure should be additive so that we can compute the uncertainty of multiple events occurring together by adding the individual uncertainties together.
+
+
+## 7E2 
+```{r}
+p <- c(.7, .3) 
+-sum(p*log(p))
+```
+
+The information entropy is about 0.61, just as it was in the rain and shine example.
+
+
+## 7E3
+```{r}
+p <- c(.2, .25, .25, .3)
+-sum(p*log(p))
+```
+
+The information entropy is about 1.38. 
+
+
+## 7E4
+```{r}
+p <- c((1/3), (1/3), (1/3))
+-sum(p*log(p))
+```
+
+The information entropy is about 1.1. It makes sense that this die has a lower entropy than the die in 7E3 because there are fewer possible events and thus less uncertainty about the outcome of any given die roll.
+
+
+## 7M1 
+Information criteria estimate relative out-of-sample KL divergence. WAIC is more general because it doesn't assume anything about the shape of the posterior. To be reliable, AIC requires that the priors are either overwhelmed by the likelihood or flat, that the posterior distribution is approximately multivariate Gaussian, and that the sample size is greater than the number of parameters. To transform WAIC into AIC, we would need to adopt the assumptions about the flat priors, having a larger sample size than the number of parameters, and having a posterior distribution that is approximately multivariate Gaussian.
+
+
+## 7M2 
+Model selection means that you chose a model based on which has the lowest criterion value and get rid of other models, which means that you lose information about the models gained from comparing differences between models in CV, PSIS, and WAIC values. Also, model selection as defined above doesn't take into account whether your goal is estimating causal effects or getting accurate prediction. Model comparison, on the other hand, compares multiple models and their criteria values to gain insight about how variables influence predictions.
+
+
+## 7M3
+Information criteria are based on deviance, which itself is based on total lppd. The lppd score is calculated by adding together the log of the average probability for each observation, where the average is taken over the entire posterior distribution. Since lppd relies on information from each observation, it is essential that all models being compared using an information criterion are trained with the same sample. Some information criteria and approximated CV scores, such as WAIC and PSIS, are pointwise (each case/point is considered).
+
+
+## 7M4
+The effective number of parameters will become smaller as a prior becomes more concentrated because the effective number of parameters measures the risk of overfitting, and making the priors more concentrated reduces overfitting by preventing the model from learning more than just the regular features of the training sample. 
+
+
+## 7M5 
+Informative priors stop the model from getting too excited by the training sample while still allowing it to learn the regular features of the training sample. This helps the model produce better out-of-sample predictions because it isn't bound to irregularities found in the training sample.
+
+
+## 7M6
+If a prior is too informative, the model won't be able to get to know the regular features of the training sample and thus will have poor predictive abilities. 
+
