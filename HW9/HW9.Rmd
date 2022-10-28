@@ -1,0 +1,159 @@
+---
+title: "HW9"
+author: "Alexandra Gibbons"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidybayes)
+library(rstantools)
+library(rethinking)
+library(tidybayes.rethinking)
+library(patchwork)
+```
+
+## 8E1
+1) Pretty sure that the dough needs to be in the right temperature to rise. So, temperature and yeast would lead to an interaction effect in a model of how much bread dough rises.
+2) Education and gender would interact in a model predicting income as the association between education and income likely varies by gender (and the relationship between gender and income also varies by education).
+3) Gasoline and having a functional engine would interact in a model of making a car go. 
+
+## 8E2
+1) Yes, we need to cook the onions on low heat and stir them at an rate dependent on stove temperature to ensure they don't dry out, so there is an interaction effect. 
+2) No interaction. 
+3) No interaction. 
+4) No interaction. 
+
+## 8E3
+
+1) H=heat, S=stir (so they don't dry out). $O_i$ is an onion's caramelization.
+$$O_i = \text{Normal}(\mu_i, \sigma)$$
+$$\mu_i=\alpha + \beta_H H_i + \beta_S S_i + \beta_{HS} H_i S_i$$
+
+2) C=cylinders, F=fuel injector. $S_i$ is a car's speed (please no more cars). 
+$$S_i = \text{Normal}(\mu_i, \sigma)$$
+$$\mu_i=\alpha + \beta_C C_i + \beta_F F_i$$
+
+3) P=parents' political beliefs, F=friends' political beliefs. $R_i$ is respondent's political beliefs.
+$$R_i = \text{Normal}(\mu_i, \sigma)$$
+$$\mu_i=\alpha + \beta_P P_i + \beta_F F_i$$
+4) S=sociability, A=appendages.  $I_i$ is an animal's intellect.
+$$I_i = \text{Normal}(\mu_i, \sigma)$$
+$$\mu_i=\alpha + \beta_S S_i + \beta_A A_i$$
+
+## 8M1 
+Let T=temperature (binary hot or cold variable), W=water, and S=shade. $\mu$ is bloom size.
+$$\mu_i=\alpha + \beta_T T_i +\beta_S S_i + \beta_W W_i + \beta_{TS} T_i S_i + \beta_{WS} W_i S_i + \beta_{TW} T_i W_i + \beta_{TWS} T_i W_i S_i$$
+
+In this scenario, $\beta_S$, $\beta_W$, and $\beta_{WS}$ would all be zero because the associations of both water and shade with bloom size are entirely dependent on their interaction with temperature. If T=0 was hot and T=1 was cold (though I know that SR encourages indicator variables with possible values of 1 and 2) then $\alpha$ would also be 0 as the expected bloom size would be 0. Basically, the relationships between water and bloom size, shade and bloom size, and the interaction between water and shade with relation to bloom size are all dependent on temperature.
+
+## 8M2 
+Kind of already did that above...I am removing  $\beta_S$, $\beta_W$,  $\beta_{WS}$, and $\alpha$ because I've already established that they would be 0 in this scenario (though I am aware that we should usually include coefficients of any variable if we include it in an interaction). Again, when T=0 that means the temperature is hot.
+
+$$\mu_i= \beta_T T_i + \beta_{TS} T_i S_i + \beta_{TW} T_i W_i + \beta_{TWS} T_i W_i S_i$$
+
+So, whenever it's hot and T=0, bloom size will be 0 because each component of the model is multiplied by 0 due to T. 
+
+## 8M3
+Hopefully I am understanding the wording of this question. Sounds like the raven population size is dependent on the population size of wolves, the population size of prey, and on the interaction between the population sizes of prey and wolves (ie the association between wolf population and raven population depends on prey population, and the association between prey population and raven population depends on wolf population). Let's simulate this below, then do quadratic approximation, and finally make some graphs. 
+
+```{r}
+bW <- .04
+bP <- .1
+bWP <- .2
+
+ravensim <- tibble(
+  wolves=as.integer(rnorm(1e4, 50, 5)),
+  prey=as.integer(rnorm(1e4, 100, 8)),
+  ravens=as.integer(rnorm(1e4, 2 + bW*wolves + bP*prey + bWP*wolves*prey, 15))
+)
+
+m3 <- quap(
+  alist(
+    ravens ~ dnorm(mu, sigma),
+    mu <- a + bW*wolves + + bP*prey + bWP*wolves*prey,
+    a ~ dnorm(0, 1), #expect 0 ravens when there are no wolves or prey
+    bW ~ dnorm(0, .5),
+    bP ~ dnorm(0, .5),
+    bWP ~ dnorm(0, .5),
+    sigma ~ dexp(1)
+  ), data=ravensim)
+
+precis(m3)
+
+pred_df1 <- crossing(
+  prey=72, wolves=35:65) %>% 
+  mutate(ravens=m3@coef[["a"]] + (m3@coef[["bW"]]*wolves) + (m3@coef[["bP"]]*prey) + (m3@coef[["bWP"]]*wolves*prey))
+
+ggm3_1 <- pred_df1 %>% ggplot(
+  aes(x=wolves, y=ravens)) + geom_line() + theme_minimal() +
+  labs(title="prey pop=72 (min)", x="wolf pop", y="raven pop") + 
+  ylim(600, 1500)
+
+pred_df2 <- crossing(
+  prey=100, wolves=35:65) %>% 
+  mutate(ravens=m3@coef[["a"]] + (m3@coef[["bW"]]*wolves) + (m3@coef[["bP"]]*prey) + (m3@coef[["bWP"]]*wolves*prey))
+
+ggm3_2 <- pred_df2 %>% ggplot(
+  aes(x=wolves, y=ravens)) + geom_line() + theme_minimal() +
+  labs(title="prey pop=100 (median)", x="wolf pop", y="raven pop") +
+  ylim(600, 1500)
+
+pred_df3 <- crossing(
+  prey=127, wolves=35:65) %>% 
+  mutate(ravens=m3@coef[["a"]] + (m3@coef[["bW"]]*wolves) + (m3@coef[["bP"]]*prey) + (m3@coef[["bWP"]]*wolves*prey))
+
+ggm3_3 <- pred_df3 %>% ggplot(
+  aes(x=wolves, y=ravens)) + geom_line() + theme_minimal() +
+  labs(title="prey pop=127 (max)", x="wolf pop", y="raven pop") +
+  ylim(600, 1500)
+
+ggm3_1 + ggm3_2 + ggm3_3
+```
+
+Sorry, graphs are kind of ugly. But they do show the impact of the interaction term. The predicted positive association between the wolf population and and raven population sizes gets larger in magnitude as the prey population increases, which is good because it reflects how these data were simulated. I'm not sure if the question is asking about if this biological interaction would be linear in real life or in the simulated data/model; in the latter, it is. 
+
+
+## 8M4
+Repeat the tulips analysis, but this time use priors that constrain the effect of water to be positive and the effect of shade to be negative. Use prior predictive simulation. What do these prior assumptions mean for the interaction prior, if anything?
+
+
+```{r}
+data("tulips", package="rethinking")
+tulips <- tulips
+
+## first need to transform variables to align with book 
+tulips <- tulips %>% 
+  mutate(blooms_std=blooms/max(blooms),
+         water_cent=water-mean(water),
+         shade_cent=shade-mean(shade))
+
+## next, let's write out the model and new priors 
+m4 <- quap(
+  alist(
+    blooms_std ~ dnorm(mu, sigma),
+    mu <- a + bw*water_cent - bs*shade_cent + bws*water_cent*shade_cent,
+    a ~ dnorm(.5, .25),
+    bw ~ dlnorm(-2.5, .25),
+    bs ~ dlnorm(-2.5, .25),
+    bws ~ dlnorm(-3.5, .25),
+    sigma ~ dexp(1)
+  ), data = tulips)
+
+set.seed(23)
+prior <- extract.prior(m4)
+                  
+par(mfrow=c(1,3)) 
+for ( s in -1:1 ) {
+    idx <- which( tulips$shade_cent==s )
+    plot( tulips$water_cent[idx] , tulips$blooms_std[idx] , xlim=c(-1,1) , ylim=c(0,1) ,
+        xlab="water" , ylab="blooms" , pch=16 , col=rangi2 , title(s))
+    mu <- link( m4 , post=prior, data=data.frame( shade_cent=s , water_cent=-1:1) )
+    for ( i in 1:20 ) lines( -1:1 , mu[i,] , col=col.alpha("black",0.3) )
+}
+
+```
+
+I made the interaction prior concentrated closer to 0. Before I did this, some of the lines showing the association between water and blossoms had a negative slope at certain shade values, presumably because of the interaction coefficient. 
