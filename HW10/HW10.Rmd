@@ -1,0 +1,213 @@
+---
+title: "HW10"
+author: "Alexandra Gibbons"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rethinking)
+library(tidybayes)
+library(tidyverse)
+library(rstantools)
+library(tidybayes.rethinking)
+```
+
+## 9E1
+Only (3) is a requirement of the simple Metropolis algorithm. 
+
+## 9E2
+In the Metropolis algorithm,there is an equal chance of proposing a jump in any given direction. With Gibbs sampling, there are adaptive proposals with asymmetric probabilities, which allows posterior estimation from fewer samples than possible with the Metropolis algorithm. These adaptive proposals are based on information from  conjugate pairs (combination of prior distribution and likelihood), which can be solved to find the posterior distribution of individual parameters. The major limitation to Gibbs sampling (this is also a downside of the Metropolis algorithm) is that in models with many parameters, it will often get stuck in regions of high correlation between two or more parameters (concentration of measure) and thus will be ineffective at exploring the whole posterior distribution and identifying the region of the posterior distribution with the most probability mass.
+
+## 9E3
+Hamiltonian Monte Carlo can't handle non-continuous (discrete) parameters because the simulated particle needs a continuous surface to "glide" over while sampling.
+
+## 9E4
+The effective number of samples takes autocorrelation among sequential samples into account (actual number of samples does not), and gives an estimate of the length that your Markov chain would be had there been no autocorrelation. If sequential samples are anti-correlated, n_eff can be larger than the actual number of samples.
+
+## 9E5
+Rhat should approach 1 (from above) when a chain is sampling the posterior distribution correctly. 
+
+## 9E6
+"Sketch a good trace plot for a Markov chain,one that is effectively sampling from the posterior distribution. What is good about its shape? Then sketch a trace plot for a malfunctioning Markov chain. What about its shape indicates malfunction?"
+
+```{r}
+y <- rnorm( 100 , mean=100 , sd=1 )
+e6a <- ulam(
+    alist(
+        y ~ dnorm( mu , sigma ) ,
+        mu <- a1 + a2 ,
+        a1 ~ dnorm( 0 , 1000 ),
+        a2 ~ dnorm( 0 , 1000 ),
+        sigma ~ dexp( 1 )
+    ) , data=list(y=y) , chains=3, cores=3 )
+
+traceplot(e6a)
+
+e6b <- ulam(
+    alist(
+        y ~ dnorm( mu , sigma ) ,
+        mu <- a1 + a2 ,
+        a1 ~ dnorm( 50 , 10 ),
+        a2 ~ dnorm( 50, 10 ),
+        sigma ~ dexp( 1 )
+    ) , data=list(y=y) , chains=3, cores=3 )
+
+traceplot(e6b)
+
+```
+
+The first set of trace plots are horrible, especially for a1 and a2; they are not stationary, do not have good mixing, and do not converge. The second set of trace plots look healthy, like fluffy caterpillars (and satisfy stationarity, good mixing, and convergence requirements). 
+
+
+## 9E7
+```{r}
+trankplot(e6a)
+trankplot(e6b)
+```
+
+This first set of trank plots is bad, again especially for a1 and a2; these histograms are not staying in the same range and there isn't a ton of overlap. The second set of trank plots is good, lots of overlap! 
+
+## 9M1 
+```{r}
+data(rugged)
+d <- rugged
+dd <- d %>% 
+  drop_na(rgdppc_2000) %>% 
+  mutate(log_gdp=log(rgdppc_2000)) %>% 
+  mutate(log_gdp_std = log_gdp / mean(log_gdp),
+         rugged_std = rugged / max(rugged),
+         cid = ifelse(cont_africa == 1, "1", "2")) %>% 
+  mutate(rugged_std_c = rugged_std - mean(rugged_std))
+         
+dat_slim <- dd %>%
+  mutate(cid = as.integer(cid)) %>% 
+  dplyr::select(log_gdp_std, rugged_std, cid, rugged_std_c)
+
+str(dat_slim)
+
+#first do original model 
+m1a <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=4, cores=4 )
+
+precis(m1a, depth=2)
+traceplot(m1a)
+trankplot(m1a)
+
+# w/ new prior
+m1b <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dunif(0,  1 )), 
+    data=dat_slim , chains=4, cores=4)
+
+precis(m1b, depth=2)
+traceplot(m1b)
+trankplot(m1b)
+
+# let's try to compare the posteriors for sigma
+m1a_post <- extract.samples(m1a) %>% pluck("sigma")
+m1b_post <- extract.samples(m1b) %>% pluck("sigma")
+compare <- tibble(original_exp = m1a_post,
+                  uniform = m1b_post) %>% 
+  pivot_longer(names_to="model",
+               values_to="sigma",
+               cols=everything())
+
+compare %>% ggplot(aes(x=sigma, fill=model)) +
+  geom_density(alpha=.3) + theme_minimal()
+```
+
+Not seeing huge differences, the data seems to have mostly overwhelmed the priors, though the mode and shapes of the posterior distributions of sigma are slightly different.
+
+## 9M2
+```{r}
+m1c <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dexp( 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=4, cores=4 )
+
+precis(m1c, depth=2)
+
+m1a_post2 <- extract.samples(m1a) %>% pluck("b")
+m1c_post <- extract.samples(m1c) %>% pluck("b")
+
+compare2 <- tibble(original_normal = m1a_post2,
+                  exponential = m1c_post) %>% 
+  pivot_longer(names_to="model",
+               values_to="b",
+               cols=everything())
+
+compare2 %>% ggplot(aes(x=b[,1], fill=model)) +
+  geom_density(alpha=.3) + theme_minimal()
+
+compare2 %>% ggplot(aes(x=b[,2], fill=model)) +
+  geom_density(alpha=.3) + theme_minimal()
+```
+
+Based on the precis output, the posterior distribution of b (assoc. between ruggedness and log gdp) for African nations is relatively similar across both models, though the shapes are slightly different. However, the posterior distribution of b for the non-African nations is very different, as can also be seen in the plot above. This is because we constrained this slope to be positive, when in reality it should be negative. Also notice that the posterior distribution is much more concentrated with the exponential prior compared to the posterior distribution with the normal prior, which makes sense because our prior is also more concentrated. 
+
+## 9M3
+Going to do the ruggedness exampled again, hehe. 
+```{r}
+set.seed(3)
+
+m2a <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=1, iter=1000, warmup=500) # default settings
+
+m2b <-  ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=1, iter=1000, warmup=350)
+
+m2c <-  ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=1, iter=1000, warmup=100)
+
+m2d <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=1, iter=1000, warmup=50)
+
+m2e <- ulam(
+    alist(log_gdp_std ~ dnorm( mu , sigma ),
+        mu <- a[cid] + b[cid]*( rugged_std - 0.215 ),
+        a[cid] ~ dnorm( 1 , 0.1 ),
+        b[cid] ~ dnorm( 0 , 0.3 ),
+        sigma ~ dexp( 1 )), 
+    data=dat_slim , chains=1, iter=1000, warmup=5)
+
+precis(m2a, depth=2) # n_eff between 410 and 835
+precis(m2b, depth=2) # n_eff between 698 and 1391
+precis(m2c, depth=2) # n_eff between 376 and 902
+precis(m2d, depth=2) # n_eff between 515 and 1033
+precis(m2e, depth=2) # n_eff all 55
+```
+
+Having a shorter warmup while keeping the number of total iterations constant seems to increase the number of effective samples to a certain point, but when the warmup gets too small, Stan is unable to find a good step size and leapfrog step number to minimize autocorrelation among samples, so the number of effective samples plummets (see m2e especially with warmup of 5 samples).
